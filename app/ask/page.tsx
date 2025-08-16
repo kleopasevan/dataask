@@ -6,26 +6,90 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { BarChart3, Database, MessageSquare, Send, TrendingUp } from "lucide-react"
+import { Database, MessageSquare, Send, Copy, Download, LayoutDashboard, RefreshCw } from "lucide-react"
 import { useState } from "react"
 import Link from "next/link"
+
+interface Message {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  data?: any
+  chartType?: string
+  isError?: boolean
+  timestamp: Date
+}
 
 export default function AskPage() {
   const [query, setQuery] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [messages, setMessages] = useState<Message[]>([])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCancel = () => {
+    setIsLoading(false)
+    // Remove the last two messages (user prompt and loading indicator)
+    setMessages((prev) => prev.slice(0, -2))
+  }
+
+  const handleSubmit = async (e: React.FormEvent, retryQuery?: string) => {
     e.preventDefault()
-    if (!query.trim()) return
+    const currentQuery = retryQuery || query
+    if (!currentQuery.trim()) return
 
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
-      setResult({
-        query,
-        sql: "SELECT product_name, SUM(revenue) as total_revenue FROM sales GROUP BY product_name ORDER BY total_revenue DESC LIMIT 5",
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: currentQuery,
+      timestamp: new Date(),
+    }
+
+    // Add loading message
+    const loadingMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: "Analyzing your query...",
+      timestamp: new Date(),
+    }
+
+    setMessages((prev) => [...prev, userMessage, loadingMessage])
+    if (!retryQuery) setQuery("")
+
+    try {
+      // Simulate API call with potential error
+      await new Promise((resolve, reject) => {
+        setTimeout(() => {
+          // Simulate random errors for demo
+          if (Math.random() < 0.2) {
+            reject(new Error("Database connection timeout. Please try again."))
+          } else {
+            resolve({
+              query: currentQuery,
+              sql: "SELECT product_name, SUM(revenue) as total_revenue FROM sales GROUP BY product_name ORDER BY total_revenue DESC LIMIT 5",
+              data: [
+                { product_name: "Premium Headphones", total_revenue: 125000 },
+                { product_name: "Wireless Speaker", total_revenue: 98000 },
+                { product_name: "Smart Watch", total_revenue: 87000 },
+                { product_name: "Bluetooth Earbuds", total_revenue: 76000 },
+                { product_name: "Gaming Mouse", total_revenue: 65000 },
+              ],
+              insights: [
+                "Premium Headphones lead with $125K revenue",
+                "Top 5 products account for 68% of total sales",
+                "Audio products dominate the top performers",
+              ],
+            })
+          }
+        }, 2000)
+      })
+
+      // Success response
+      const successMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        role: "assistant",
+        content: `Here are the results for: "${currentQuery}"`,
         data: [
           { product_name: "Premium Headphones", total_revenue: 125000 },
           { product_name: "Wireless Speaker", total_revenue: 98000 },
@@ -33,14 +97,35 @@ export default function AskPage() {
           { product_name: "Bluetooth Earbuds", total_revenue: 76000 },
           { product_name: "Gaming Mouse", total_revenue: 65000 },
         ],
-        insights: [
-          "Premium Headphones lead with $125K revenue",
-          "Top 5 products account for 68% of total sales",
-          "Audio products dominate the top performers",
-        ],
-      })
+        chartType: "table",
+        timestamp: new Date(),
+      }
+
+      setMessages((prev) => [...prev.slice(0, -1), successMessage])
+    } catch (error) {
+      const errorMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        role: "assistant",
+        content: error instanceof Error ? error.message : "An unexpected error occurred",
+        isError: true,
+        timestamp: new Date(),
+      }
+
+      setMessages((prev) => [...prev.slice(0, -1), errorMessage])
+    } finally {
       setIsLoading(false)
-    }, 2000)
+    }
+  }
+
+  const handleRetry = (errorMessageIndex: number) => {
+    // Find the preceding user message
+    for (let i = errorMessageIndex - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        const syntheticEvent = { preventDefault: () => {} } as React.FormEvent
+        handleSubmit(syntheticEvent, messages[i].content)
+        break
+      }
+    }
   }
 
   return (
@@ -89,13 +174,25 @@ export default function AskPage() {
                   className="flex-1 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-blue-500 focus:ring-blue-500/20"
                   disabled={isLoading}
                 />
-                <Button type="submit" disabled={isLoading || !query.trim()} className="bg-blue-600 hover:bg-blue-700">
-                  {isLoading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                  ) : (
+                {isLoading ? (
+                  <>
+                    <Button type="submit" disabled className="bg-blue-600 hover:bg-blue-700">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={handleCancel}
+                      className="text-zinc-400 hover:text-white hover:bg-zinc-800"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button type="submit" disabled={!query.trim()} className="bg-blue-600 hover:bg-blue-700">
                     <Send className="h-4 w-4" />
-                  )}
-                </Button>
+                  </Button>
+                )}
               </form>
             </CardContent>
           </Card>
@@ -122,73 +219,101 @@ export default function AskPage() {
             </Card>
           </div>
 
-          {/* Results */}
-          {result && (
-            <div className="space-y-6">
-              {/* Query Summary */}
-              <Card className="bg-zinc-900 border-zinc-800 rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="text-lg text-white">Query Results</CardTitle>
-                  <CardDescription className="text-zinc-400">"{result.query}"</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-zinc-800 p-3 rounded-xl font-mono text-sm text-zinc-300 border border-zinc-700">
-                    {result.sql}
-                  </div>
-                </CardContent>
-              </Card>
+          {messages.length > 0 && (
+            <div className="space-y-4">
+              {messages.map((message, index) => (
+                <div key={message.id} className="space-y-4">
+                  {message.role === "user" ? (
+                    <div className="flex justify-end">
+                      <div className="bg-blue-600 text-white p-3 rounded-2xl max-w-2xl">{message.content}</div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-start">
+                      <div
+                        className={`p-4 rounded-2xl max-w-4xl w-full ${
+                          message.isError
+                            ? "bg-destructive/10 border border-destructive"
+                            : "bg-zinc-900 border border-zinc-800"
+                        }`}
+                      >
+                        <p className={`mb-3 ${message.isError ? "text-red-400" : "text-zinc-300"}`}>
+                          {message.content}
+                        </p>
 
-              {/* Data Table */}
-              <Card className="bg-zinc-900 border-zinc-800 rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-white">
-                    <BarChart3 className="h-5 w-5" />
-                    Results
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-b border-zinc-700">
-                          <th className="text-left p-2 font-medium text-zinc-300">Product Name</th>
-                          <th className="text-right p-2 font-medium text-zinc-300">Revenue</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {result.data.map((row: any, index: number) => (
-                          <tr key={index} className="border-b border-zinc-800 hover:bg-zinc-800/50">
-                            <td className="p-2 text-zinc-300">{row.product_name}</td>
-                            <td className="p-2 text-right font-mono text-zinc-300">
-                              ${row.total_revenue.toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
+                        {message.data && message.chartType && (
+                          <div className="mt-4">
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr className="border-b border-zinc-700">
+                                    <th className="text-left p-2 font-medium text-zinc-300">Product Name</th>
+                                    <th className="text-right p-2 font-medium text-zinc-300">Revenue</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {message.data.map((row: any, rowIndex: number) => (
+                                    <tr key={rowIndex} className="border-b border-zinc-800 hover:bg-zinc-800/50">
+                                      <td className="p-2 text-zinc-300">{row.product_name}</td>
+                                      <td className="p-2 text-right font-mono text-zinc-300">
+                                        ${row.total_revenue.toLocaleString()}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
 
-              {/* Insights */}
-              <Card className="bg-zinc-900 border-zinc-800 rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-white">
-                    <TrendingUp className="h-5 w-5" />
-                    AI Insights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2">
-                    {result.insights.map((insight: string, index: number) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
-                        <span className="text-zinc-300">{insight}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
+                        {message.data && message.chartType && (
+                          <div className="border-t border-zinc-700 mt-4 pt-4">
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white bg-transparent"
+                              >
+                                <Copy className="h-4 w-4 mr-1" />
+                                Copy SQL
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white bg-transparent"
+                              >
+                                <Download className="h-4 w-4 mr-1" />
+                                Download CSV
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white bg-transparent"
+                              >
+                                <LayoutDashboard className="h-4 w-4 mr-1" />
+                                Add to Dashboard
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {message.isError && (
+                          <div className="mt-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRetry(index)}
+                              className="text-zinc-400 hover:text-white hover:bg-zinc-800"
+                            >
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              Retry
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
