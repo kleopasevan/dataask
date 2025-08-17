@@ -63,9 +63,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
             {session?.user?.name?.[0] || session?.user?.email?.[0] || "U"}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{session?.user?.name || session?.user?.email}</p>
-          </div>
         </div>
 
         <div className="flex gap-2">
@@ -100,7 +97,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4 px-6 py-4">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="lg:hidden bg-transparent">
+                <Button variant="outline" size="sm" className="lg:hidden bg-transparent" onClick={() => setSidebarOpen(true)}>
                   <Menu className="w-4 h-4" />
                 </Button>
               </SheetTrigger>
@@ -113,3 +110,5 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     </div>
   )
 }
+
+

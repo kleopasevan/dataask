@@ -10,45 +10,19 @@ import { clsx } from "clsx"
 
 export default function ConnectPage() {
   const connections = [
-    {
-      id: "1",
-      name: "Production Postgres",
-      type: "PostgreSQL",
-      status: "Connected" as const,
-    },
-    {
-      id: "2",
-      name: "Marketing Leads CSV",
-      type: "CSV",
-      status: "Syncing..." as const,
-    },
-    {
-      id: "3",
-      name: "Analytics Warehouse",
-      type: "BigQuery",
-      status: "Error" as const,
-    },
-    {
-      id: "4",
-      name: "Customer Data",
-      type: "MySQL",
-      status: "Connected" as const,
-    },
-    {
-      id: "5",
-      name: "Sales Reports",
-      type: "Excel",
-      status: "Syncing..." as const,
-    },
+    { id: "1", name: "Production Postgres", type: "PostgreSQL", status: "Connected" as const },
+    { id: "2", name: "Marketing Leads CSV", type: "CSV", status: "Syncing..." as const },
+    { id: "3", name: "Analytics Warehouse", type: "BigQuery", status: "Error" as const },
+    { id: "4", name: "Customer Data", type: "MySQL", status: "Connected" as const },
+    { id: "5", name: "Sales Reports", type: "Excel", status: "Syncing..." as const },
   ]
 
-  const getStatusBadgeClass = (status: string) => {
-    return clsx({
+  const getStatusBadgeClass = (status: string) =>
+    clsx({
       "bg-green-500/20 text-green-400 border-green-500/30": status === "Connected",
       "bg-yellow-500/20 text-yellow-400 border-yellow-500/30": status === "Syncing...",
       "bg-red-500/20 text-red-400 border-red-500/30": status === "Error",
     })
-  }
 
   return (
     <DashboardLayout>
@@ -63,10 +37,7 @@ export default function ConnectPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {connections.map((connection) => (
-            <Card
-              key={connection.id}
-              className="bg-zinc-900/50 border-zinc-800 hover:border-blue-500/50 transition-colors duration-200"
-            >
+            <Card key={connection.id} className="bg-zinc-900/50 border-zinc-800 hover:border-blue-500/50 transition-colors duration-200">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -86,12 +57,8 @@ export default function ConnectPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
-                      <DropdownMenuItem className="text-zinc-300 hover:text-white hover:bg-zinc-800">
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
-                        Delete
-                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-zinc-300 hover:text-white hover:bg-zinc-800">Edit</DropdownMenuItem>
+                      <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-red-500/10">Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -109,3 +76,5 @@ export default function ConnectPage() {
     </DashboardLayout>
   )
 }
+
+

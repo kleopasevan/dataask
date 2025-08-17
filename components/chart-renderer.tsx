@@ -141,3 +141,5 @@ export function ChartRenderer({ data, type, title }: ChartRendererProps) {
     </div>
   )
 }
+
+

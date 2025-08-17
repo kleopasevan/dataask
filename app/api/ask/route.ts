@@ -1,7 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+// Minimal handler for v0 environment without framework-specific types
 
 class QueryPlanningAgent {
   async plan(question: string): Promise<{
@@ -13,7 +10,6 @@ class QueryPlanningAgent {
   }> {
     const startTime = Date.now()
 
-    // Simple pattern matching for demo questions
     const patterns = [
       {
         pattern: /total revenue.*(\d+)\s*days?.*by region/i,
@@ -48,7 +44,6 @@ class QueryPlanningAgent {
       }
     }
 
-    // Default fallback
     return {
       sql: "SELECT COUNT(*) as total_orders FROM orders",
       explanation: "I couldn't understand your specific question, so here's the total number of orders.",
@@ -69,7 +64,6 @@ class QueryPlanningAgent {
       ORDER BY revenue DESC
     `
 
-    // Mock data for demo
     const data = [
       { region: "North America", revenue: 125000 },
       { region: "Europe", revenue: 98000 },
@@ -98,7 +92,6 @@ class QueryPlanningAgent {
       LIMIT ${limit}
     `
 
-    // Mock data for demo
     const data = Array.from({ length: limit }, (_, i) => ({
       name: `Product ${i + 1}`,
       revenue: Math.floor(Math.random() * 50000) + 10000,
@@ -123,7 +116,6 @@ class QueryPlanningAgent {
       ORDER BY month
     `
 
-    // Mock data for demo
     const data = Array.from({ length: 12 }, (_, i) => {
       const date = new Date()
       date.setMonth(date.getMonth() - (11 - i))
@@ -151,7 +143,6 @@ class QueryPlanningAgent {
       ORDER BY orders DESC
     `
 
-    // Mock data for demo
     const data = [
       { channel: "Online", orders: 450 },
       { channel: "Mobile App", orders: 320 },
@@ -178,7 +169,6 @@ class QueryPlanningAgent {
       ORDER BY avg_order_value DESC
     `
 
-    // Mock data for demo
     const data = [
       { region: "North America", avg_order_value: 125.5 },
       { region: "Europe", avg_order_value: 98.75 },
@@ -195,44 +185,36 @@ class QueryPlanningAgent {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const { question } = await request.json()
 
     if (!question || typeof question !== "string") {
-      return NextResponse.json({ error: "Question is required" }, { status: 400 })
+      return new Response(JSON.stringify({ error: "Question is required" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      })
     }
 
     const agent = new QueryPlanningAgent()
     const result = await agent.plan(question)
 
-    // Log the query for audit purposes
-    await prisma.queryLog.create({
-      data: {
-        userId: session.user.id,
-        workspaceId: "demo-workspace", // In a real app, get from session
-        sqlHash: Buffer.from(result.sql).toString("base64"),
+    return new Response(
+      JSON.stringify({
+        explanation: result.explanation,
+        data: result.data,
+        chartType: result.chartType,
         sql: result.sql,
-        affectedRows: result.data?.length || 0,
-        durationMs: result.executionTime || 0,
-        success: true,
-        policySnapshot: {},
-      },
-    })
-
-    return NextResponse.json({
-      explanation: result.explanation,
-      data: result.data,
-      chartType: result.chartType,
-      sql: result.sql,
-    })
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )
   } catch (error) {
     console.error("Ask API error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "content-type": "application/json" },
+    })
   }
 }
+
+

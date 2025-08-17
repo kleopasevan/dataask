@@ -35,30 +35,29 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
+          name: user.name ?? undefined,
         }
       },
     }),
   ],
-  session: {
-    strategy: "jwt",
-  },
-  pages: {
-    signIn: "/login",
-    signUp: "/signup",
-  },
+  session: { strategy: "jwt" },
+  pages: { signIn: "/login", signUp: "/signup" },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        // @ts-expect-error add id to token
         token.id = user.id
       }
       return token
     },
     async session({ session, token }) {
       if (token) {
+        // @ts-expect-error ensure id exists on session
         session.user.id = token.id as string
       }
       return session
     },
   },
 }
+
+
